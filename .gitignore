@@ -1,0 +1,11 @@
+*.html
+*~
+*#
+*.os
+*.so
+*.c
+*.pyc
+*.log
+*.#*
+.sconsign.dblite
+*.ps

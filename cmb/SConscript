@@ -1,0 +1,24 @@
+Import('env')
+
+env.PythonExtension('lockf', ['lockf.pyx'])
+env.PythonExtension('mapdatautils', ['mapdatautils.pyx'])
+env.PythonExtension('covar', ['covar.pyx'], PYEXTCFLAGS=['-fno-strict-aliasing',
+                                                         '-DNDEBUG', '-Wall',
+                                                         '-fwrapv', '-g', '-Wstrict-prototypes'
+                                                         ])
+env.PythonExtension('tangen_covar', ['tangen_covar.pyx'], PYEXTCFLAGS=['-fno-strict-aliasing',
+                                                         '-DNDEBUG', '-Wall',
+                                                         '-fwrapv', '-g', '-Wstrict-prototypes'
+                                                         ])
+env.PythonExtension('dipole_covar', ['dipole_covar.pyx'],
+                    PYEXTCFLAGS=['-fno-strict-aliasing',
+                                 '-DNDEBUG', '-Wall',
+                                 '-fwrapv', '-g', '-Wstrict-prototypes'
+                                ])
+
+env.PythonExtension('noise', ['noise.pyx'], PYEXTCFLAGS=['-fno-strict-aliasing',
+                                                         '-DNDEBUG', '-Wall', '-O3',
+                                                         '-fwrapv', '-g', '-Wstrict-prototypes'
+                                                         ])
+
+
