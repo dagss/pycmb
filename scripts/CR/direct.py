@@ -26,18 +26,6 @@ Ninv_d = Ninv_map * d * Npix / 4 / pi
 A_Ninv_d = A * Ninv_d.to_real_harmonic(0, lmax)
 mean_direct = Sigma_direct * A_Ninv_d
 
-if 1 == 0:
-    Sigmainv_direct = DenseMatrix(Sinv.numpy() + A_Ninv_A.numpy())
-    d = obs.load_temperature('ring')
-    #dh = obs.load_temperature('ring').to_real_harmonic(lmin, lmax)
-
-    Ninv_d = Ninv_map * d * Npix / 4 / pi
-    A_Ninv_d = A * Ninv_d.to_real_harmonic(0, lmax)
-
-    mean_direct = Sigmainv_direct.solve_right(A_Ninv_d)
-    mean_direct = harmonic_sphere_map(mean_direct, 0, lmax, is_complex=False)
-
-    Sigma_direct = Sigmainv_direct.inverse()
 
 with out_dir:
     dumpvars(globals(), ['Sigma_direct', 'mean_direct'], 'direct.pickle')

@@ -11,10 +11,10 @@ sampler = ConstrainedSignalSampler(
     observations=[obs],
     verbosity=0,
     lprecond=lprecond,
-    seed=83,
+    seed=83 + comm.Get_rank()*10000,
     lmax=lmax)            
 
-J = 3000
+J = 1000
 Nalm = (lmax + 1)**2 - lmin**2
 
 time_lock = time_io = 0
@@ -49,6 +49,7 @@ def get_sample_count():
 @parallel()
 def draw_signal(indices, comm):
     for j in indices:
+        
         print 'Sample #%d of %d @ process %d' % (j+1, J, comm.Get_rank())
         signal = sampler.sample_signal().to_real()
         persist_sample(signal)
