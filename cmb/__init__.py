@@ -26,7 +26,6 @@ from healpix import nside2npix, npix2nside
 from oomatrix import *
 
 from observation import *
-from apps import *
 from isotropic import *
 
 from signal_sampler import *
