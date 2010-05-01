@@ -7,7 +7,8 @@ import contextlib
 
 __all__ = ['get_times', 'log_times', 'working_directory', 'verbosity_to_logger',
            'as_random_state', 'check_l_increases',
-           'locked_pytable', 'locked_h5file']
+           'locked_pytable', 'locked_h5file',
+           'pycmb_debug']
 
 def get_times():
     return (clock(), wtime())
@@ -183,4 +184,4 @@ def check_l_increases(*args):
             raise ValueError('Invalid l value (out of bounds, perhaps set by other l values)')
         prev = i
 
-
+pycmb_debug = 'PYCMB_DEBUG' in os.environ and os.environ['PYCMB_DEBUG'] == '1'

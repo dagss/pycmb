@@ -366,28 +366,36 @@ class _PixelSphereMap(NDArraySubclassBase):
         assert self.ndim == 1
         fd, infile = tempfile.mkstemp(suffix='.fits')
         os.close(fd)
-        self.to_fits(infile, map_units='mK')
+        self.to_fits(infile, map_units='raw')
         if os.path.isfile(outfile):
             os.remove(outfile)
         flags = []
         if title is not None: flags.append('-ttl "%s"' % title)
         if max is not None: flags.append('-max %f' % max)
         if min is not None: flags.append('-min %f' % min)
-        if bar is not None: flags.append('-bar .true.')
+        if bar: flags.append('-bar .true.')
 
         cmd = ('map2gif %s -col %d -inp "%s" -out "%s"' %
                   (' '.join(flags), col, infile, outfile))
         os.system(cmd)
         os.remove(infile)
 
-    def to_fits(self, filename, map_units='K', output_units='mK', ):
+    def to_fits(self, filename, map_units='K', output_units='mK'):
         import pyfits
         import os
 
-        assert output_units == 'mK' and map_units in ('K', 'mK')
+        assert output_units == 'mK'
         data = self.to_nested()
         if map_units == 'K':
-            data *= 1e-3
+            data *= 1e3
+        elif map_units == 'mK':
+            pass
+        elif map_units == 'uK':
+            data *= 1e6
+        elif map_units == 'raw':
+            pass
+        else:
+            raise ValueError('Illegal map unit')
 
         if self.ndim != 1:
             raise NotImplementedError()
@@ -606,6 +614,16 @@ class _PixelSphereMap(NDArraySubclassBase):
                 healpix.sub_udgrade_nest(self[idx], buf[idx])
             return _PixelSphereMap(buf, pixel_order='nested')
 
+    def remove_multipoles_inplace(self, degree, mask):
+        """
+        Estimates and removes the monopole and/or the dipole. See HEALPix
+        remove_dipole. The coefficients for the multipoles removed are
+        returned as a tuple.
+        """
+        if mask.pixel_order != self.pixel_order:
+            raise ValueError("Pixel order of mask does not match pixel order of map")
+        return healpix.remove_dipole_double(self.Nside, self, self.pixel_order,
+                                            degree, mask)
 def harmonic_sphere_map(data, lmin=0, lmax=None, is_complex=None, is_brief=None):
     """
     Constructs a sphere map in harmonic space.

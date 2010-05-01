@@ -9,7 +9,7 @@ from utils import *
 
 __all__ = ['CmbObservation', 'CmbObservationProperties', 'map_from_fits',
            'load_temperature_pixel_window_matrix',
-           'make_cosine_beam']
+           'make_cosine_beam', 'beam_to_fits']
 
 class FormatError(Exception):
     pass
@@ -105,6 +105,15 @@ def as_beam(beam):
             raise NotImplementedError('l\'s not stored consecutively in beam file')
         beam = data['beam']
         return ClArray(beam.copy(), lmin, lmax)
+
+def beam_to_fits(filename, beam):
+    import pyfits
+    beamdata = beam.by_l[0:beam.lmax+1].view(np.ndarray)
+    cols = pyfits.ColDefs([
+        pyfits.Column(name='beam', format='E', array=beamdata)])
+    tab = pyfits.new_table(cols)
+    hdulist = pyfits.HDUList([pyfits.PrimaryHDU(), tab])
+    hdulist.writeto(filename)
 
 def as_kelvin(sigma):
     msg = 'Must be float (kelvin) or a string on the form "2.3 mK"'

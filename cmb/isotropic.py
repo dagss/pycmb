@@ -138,10 +138,22 @@ class ClArrayAccessByEll(object):
         else:
             return self.base.get_by_l(idx)
 
-wmap_cl_sz_lens_dtype = [('l', np.int),
-                         ('cl', np.double),
-                         ('sz', np.double),
-                         ('lens', np.double)]
+
+## def power_spectrum_from_fits(f, dtype=np.double):
+##     msg = 'Unexpected FITS data for power spectrum'
+##     import pyfits
+##     if isinstance(f, str):
+##         f = pyfits.open(f)
+##     if len(f) != 1:
+##         raise ValueError(msg)
+##     data = f[0].data
+##     if data.shape[0:3] != (2, 1, 1):
+##         raise ValueError(msg)
+##     ls = data[0, 0, 0, :]
+##     Cls = data[1, 0, 0, :].astype(dtype)
+##     if np.any(ls != np.arange(ls.shape[0])):
+##         raise NotImplementedError('Only contiguous Cls supported')
+##     return ClArray(Cls, 0, Cls.shape[0]-1)
 
 def as_power_spectrum(desc):
     """
@@ -151,12 +163,25 @@ def as_power_spectrum(desc):
         return desc
     elif not isinstance(desc, str):
         raise TypeError('Please provide a filename')
-    data = np.loadtxt(desc, dtype=wmap_cl_sz_lens_dtype)
+
+
+    # First attempt as FITS file
+#    import pyfits
+#    try:
+#        f = pyfits.open(desc)
+#    except IOError:
+#        pass # not a fits file; fall back to text loading below
+#    else:
+#        return power_spectrum_from_fits(f)
+
+    # Load as text file
+    data = np.loadtxt(desc, dtype=[('l', np.int),
+                                   ('cl', np.double)])
     l = data['l']
     if np.any(l != np.arange(2, data.shape[0] + 2)):
         raise RuntimeError("Unexpected data in data file")
-    l = data['cl'] * 2*np.pi / (l*(l+1)) * 1e-12 # microkelvin**2
-    return ClArray(l, 2, 2 + l.shape[0] - 1)
+    Cl = data['cl'] * 2*np.pi / (l*(l+1)) * 1e-12 # microkelvin**2
+    return ClArray(Cl, 2, 2 + Cl.shape[0] - 1)
 
 class IsotropicCmbModel(CmbModel):
     def __init__(self, power_spectrum):
@@ -167,4 +192,29 @@ class IsotropicCmbModel(CmbModel):
     def load_covariance(self, lmin, lmax, dtype=np.double):
         Cl = self._power_spectrum.by_l[lmin:lmax + 1].astype(dtype)
         return isotropic_real_covar(Cl)
+        
+    def get_power_spectrum(self):
+        return self._power_spectrum.copy()
+
+    def get_power_spectrum_mutable(self):
+        return self._power_spectrum.copy()
+
+    def plot(self, ax=None, lmax=None, scale=True):
+        if ax is None:
+            from matplotlib import pyplot as plt
+            fig = plt.figure()
+            ax = fig.add_subplot(1,1,1)
+        if lmax is None:
+            lmax = self.lmax
+        Cl = self.get_power_spectrum().by_l[self.lmin, lmax+1]
+        if scale:
+            Cl = Cl / (2*np.pi / (l * (l+1)) * 1e-12)
+        l = np.arange(self.lmin, lmax + 1)
+        ax.plot(l, Cl)
+        return fig, ax
+
+    def get_scale(self, lmax):
+        l = np.arange(0, lmax + 1)
+        scale = (l * (l+1)) / (2*np.pi) * 1e12
+        return l, scale
         

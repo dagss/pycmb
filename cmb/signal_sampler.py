@@ -52,7 +52,6 @@ class ConstrainedSignalSampler(object):
 
         # Set values
         obs = observations[0]
-        d = obs.load_temperature('ring')
         N_inv_map = obs.properties.load_Ninv_map_mutable('ring')
         beam_and_window = obs.properties.load_beam_transfer_matrix(lmin, lmax)
         pixwin = load_temperature_pixel_window_matrix(Nside, lmin, lmax)
@@ -64,7 +63,6 @@ class ConstrainedSignalSampler(object):
         self.lmax = lmax
         self.Npix = N_inv_map.Npix
         self.N_inv_map = N_inv_map
-        self.scaled_Ninv_map = N_inv_map * (self.Npix / 4 / np.pi)
         self.Nside = N_inv_map.Nside
         self.uniform_noise = np.all(N_inv_map == N_inv_map[0])
         self.logger = logger
@@ -72,9 +70,15 @@ class ConstrainedSignalSampler(object):
         # Multiply together beam and window
         self.beam_and_window = beam_and_window
 
-        # Compute N^{-1}d in harmonic space right away
+        # Remove monopole and dipole from data, and
+        # compute N^{-1}d in harmonic space right away
+        self.scaled_Ninv_map = N_inv_map * (self.Npix / 4 / np.pi)
+        d = obs.load_temperature_mutable('ring')
+        d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
         scaled_Ninv_d = self.scaled_Ninv_map * d
         self.Ninv_d = scaled_Ninv_d.to_harmonic(lmin, lmax, use_weights=False).to_real()
+        
+
 
         preconditioner.set_logger(make_sublogger(logger, 'precond'))
         preconditioner.set_l_range(lmin, lmax)
@@ -118,9 +122,13 @@ class ConstrainedSignalSampler(object):
 #        N_inv_map.map2gif('A2.gif', title='A2')
 
         d = obs.load_temperature_mutable('ring')
+        
+        # Remove multipoles
+        d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
+        
 #        d = d.to_harmonic(self.lmin, self.lmax).to_pixel(self.Nside)
         
-        N_inv_map *= obs.load_temperature('ring')
+        N_inv_map *= d
 #        N_inv_map.map2gif('Ninv_d_map_cg.gif', title='Ninv_d_map_cg')
         data_part = N_inv_map.to_harmonic(self.lmin, self.lmax, use_weights=False).to_real()
 #        data_part.to_pixel(self.Nside).map2gif('Ninv_d_cg.gif', title='Ninv_d_cg')
