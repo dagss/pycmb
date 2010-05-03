@@ -1,4 +1,3 @@
-from healpix.openmp import get_wtime as wtime
 from time import clock
 import logging
 import os
@@ -10,15 +9,31 @@ __all__ = ['get_times', 'log_times', 'working_directory', 'verbosity_to_logger',
            'locked_pytable', 'locked_h5file',
            'pycmb_debug']
 
+# Use MPI for wall time if present, otherwise try for OpenMP wall time,
+# otherwise local clock
+try:
+    from mpi4py.MPI import Wtime as wall_time
+except ImportError:
+    try:
+        from healpix.openmp import get_wtime as wall_time
+    except ImportError:
+        from time import time as wall_time
+
 def get_times():
-    return (clock(), wtime())
+    return (clock(), wall_time())
 
 def log_times(logger, t0, msg='Done'):
     c0, w0 = t0
-    logger.info('%s, time taken: %f (wall), %f (CPU)' % (
-        msg,
-        wtime() - w0,
-        clock() - c0))
+    if openmp_present:
+        logger.info('%s, time taken: %f (wall), %f (CPU)' % (
+            msg,
+            wall_time() - w0,
+            clock() - c0))
+    else:
+        logger.info('%s, time taken: %f (wall), %f (CPU)' % (
+            msg,
+            wall_time() - w0,
+            clock() - c0))
     
 _verbosity_to_loglevel = [logging.WARNING, logging.INFO, logging.DEBUG]
 
