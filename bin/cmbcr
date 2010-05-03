@@ -171,7 +171,7 @@ def fitsdesc(x, defext=1, deffield=0):
 # for each process
 if args.seed is None:
     args.seed = np.random.randint(sys.maxint)
-args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0xFFFFFFFF)
+args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0x7FFFFFFF)
 
 
 #
