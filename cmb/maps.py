@@ -374,7 +374,7 @@ class _PixelSphereMap(NDArraySubclassBase):
         if max is not None: flags.append('-max %f' % max)
         if min is not None: flags.append('-min %f' % min)
         if bar: flags.append('-bar .true.')
-
+        
         cmd = ('map2gif %s -col %d -inp "%s" -out "%s"' %
                   (' '.join(flags), col, infile, outfile))
         os.system(cmd)

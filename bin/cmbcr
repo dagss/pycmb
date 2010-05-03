@@ -201,7 +201,8 @@ log_configs = [
     (logging.DEBUG, {}),
 ]
 
-logging.basicConfig(format='%s %%(levelname)s:%%(name)s:%%(message)s' % args.procid)
+logging.basicConfig(format='%s %%(levelname)s:%%(name)s:%%(message)s' % args.procid,
+                    stream=sys.stdout)
 if args.verbose >= len(log_configs):
     args.verbose = len(log_configs) - 1
 lc = log_configs[args.verbose]
@@ -258,7 +259,8 @@ if args.lprecond is None:
     args.lprecond = max([min([args.lmax // 2, 60]), 30])
 
 t0 = cmb.get_times()
-logger.info('Process-specific random seed: %d' % args.seed)
+logger.info('Process-specific random seed: %d; lmax=%d; lprecond=%d' % (args.seed, args.lmax,
+                                                                        args.lprecond))
 logger.info('Initializing')
 sampler = cmb.ConstrainedSignalSampler(
     model=model,
