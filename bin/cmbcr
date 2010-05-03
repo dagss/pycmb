@@ -154,9 +154,6 @@ def find_procid():
 
     return 0
 
-if args.seed is None:
-    args.seed = np.random.randint(sys.maxint)
-
 args.output = os.path.expandvars(args.output)
 if args.procid is None:
     args.procid = find_procid()
@@ -172,7 +169,9 @@ def fitsdesc(x, defext=1, deffield=0):
 
 # Combine random seed with process ID to create unique seed
 # for each process
-args.seed = (args.seed << 16) ^ hash(args.procid)
+if args.seed is None:
+    args.seed = np.random.randint(sys.maxint)
+args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0xFFFFFFFF)
 
 
 #
