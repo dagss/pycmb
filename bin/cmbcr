@@ -34,18 +34,8 @@ examples:
   The result is saved to crsample-0-0.fits (no overwriting is done
   by default).
 
-  If the noise information is present in a field named 'RMS' in the first
-  extension.
-
-  Make 10 samples to 10 different files, specifying lmax=80 and a random
-  seed, and downgrade all maps to Nside=32:
-
-    cmbcr --lmax=80 -n 10 --seed=3422 --downgrade-nside=32 \\
-        beam.dat rms.fits mask.fits indata.fits sample-%d.fits
-
-  If sample "sample-0.fits", "sample-1.fits", and "sample-2.fits"
-  already exists, then only 7 samples will be made. This makes sampling
-  jobs easily restartable.
+  TODO: Write about file formats and other noise formats,
+  give a more complicated example.
 
 acknowledgement:
 
@@ -91,7 +81,7 @@ parser.add_argument('--sigma', type=str, default=None,
                     help='sigma0-value to use with --nobs to produce RMS. Valid forms: '
                     '0.002, 2e-3, 0.002K, 2mK, 2000uK (default unit is Kelvin).')
 parser.add_argument('-n', '--repeat', type=int, default=1,
-                    help='Number of samples to produce.')
+                    help='Number of samples to produce (per process!).')
 parser.add_argument('--lprecond', type=int, default=None,
                     help='Tune the size of the preconditioner used in the CG iterations. '
                     'Larger value increase memory use and startup overhead but *may* '
