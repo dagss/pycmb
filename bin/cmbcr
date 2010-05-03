@@ -280,3 +280,5 @@ with cmb.working_directory(args.output_dir):
                                    'be outdated): %s' % giffile)
                 map.map2gif(giffile, title=outfile, bar=True, max=args.render_span,
                             min=-args.render_span)
+logger.info('All samples taken, terminating')
+sys.exit(0)
