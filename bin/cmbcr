@@ -171,19 +171,19 @@ args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0x7FFFFFFF)
 log_configs = [
      # default level, [overrides]
 # Level 0
-    (logging.WARNING, {}),
+    (logging.WARNING, []),
 # Level 1
-    (logging.INFO, {
-      'cr': logging.WARNING,
-      'precond': logging.WARNING,
-      'cg': logging.WARNING,
-    }),
+    (logging.INFO, [
+      ('cr', logging.WARNING),
+      ('cr.precond', logging.WARNING),
+      ('cr.cg', logging.WARNING),
+    ]),
 # Level 2
-    (logging.INFO, {
-      'cr': logging.INFO,
-      'precond': logging.INFO,
-      'cg': logging.WARNING,
-    }),
+    (logging.INFO, [
+      ('cr', logging.INFO),
+      ('cr.precond', logging.INFO),
+      ('cr.cg', logging.WARNING),
+    ]),
 # Level 3
     (logging.INFO, {}),
 # Level 4
@@ -198,7 +198,7 @@ lc = log_configs[args.verbose]
 
 logger = logging.getLogger()
 logger.setLevel(lc[0])
-for name, lvl in lc[1].iteritems():
+for name, lvl in lc[1]:
     logging.getLogger(name).setLevel(lvl)
 
 
@@ -251,12 +251,13 @@ t0 = cmb.get_times()
 logger.info('Process-specific random seed: %d; lmax=%d; lprecond=%d' % (args.seed, args.lmax,
                                                                         args.lprecond))
 logger.info('Initializing')
+sampler_logger = logging.getLogger("cr")
 sampler = cmb.ConstrainedSignalSampler(
     model=model,
     observations=[observation],
     lmax=args.lmax,
     lprecond=min([args.lprecond, args.lmax]),
-    logger=logger,
+    logger=sampler_logger,
     seed=args.seed,
     eps=args.eps
 )

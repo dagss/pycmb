@@ -18,7 +18,7 @@ __all__ = ['ConstrainedSignalSampler']
 
 class ConstrainedSignalSampler(object):
     def __init__(self, observations, model, lmin=None, lmax=None,
-                 lprecond=50, verbosity=None, seed=None, logger=None,
+                 lprecond=50, seed=None, logger=None,
                  max_iterations=10000, eps=1e-6, norm_order=None,
                  preconditioner=None, cache=None):
         # Check inputs, defaults
@@ -33,7 +33,6 @@ class ConstrainedSignalSampler(object):
             raise NotImplementedError('Currently assumes a single Nside (for beams), trivial '
                                       'to fix though')
             
-        logger = verbosity_to_logger(verbosity, logger)
         self.random_state = as_random_state(seed)
 
         if lprecond is not None and preconditioner is not None:
