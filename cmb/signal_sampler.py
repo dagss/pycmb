@@ -74,7 +74,7 @@ class ConstrainedSignalSampler(object):
         # compute N^{-1}d in harmonic space right away
         self.scaled_Ninv_map = N_inv_map * (self.Npix / 4 / np.pi)
         d = obs.load_temperature_mutable('ring')
-        d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
+        #d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
         scaled_Ninv_d = self.scaled_Ninv_map * d
         self.Ninv_d = scaled_Ninv_d.to_harmonic(lmin, lmax, use_weights=False).to_real()
         
@@ -124,7 +124,7 @@ class ConstrainedSignalSampler(object):
         d = obs.load_temperature_mutable('ring')
         
         # Remove multipoles
-        d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
+        #d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
         
 #        d = d.to_harmonic(self.lmin, self.lmax).to_pixel(self.Nside)
         
@@ -149,7 +149,8 @@ class ConstrainedSignalSampler(object):
 
             eta1_part = simulate_pixel_sphere_maps(self.Nside, state=self.random_state)
             eta1_part *= np.sqrt(self.scaled_Ninv_map)
-            eta1_part = eta1_part.to_harmonic(self.lmin, self.lmax, weights_transform=np.sqrt).to_real()
+            eta1_part *= np.sqrt(Npix / 4 / np.pi)
+            eta1_part = eta1_part.to_harmonic(self.lmin, self.lmax, use_weights=False).to_real()
             eta1_part = P.H * (L.H * (P * (self.beam_and_window * eta1_part)))
 
             rhs += eta1_part
