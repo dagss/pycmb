@@ -8,6 +8,7 @@ v.Add('FORTRAN')
 v.Add('FORTRANFLAGS')
 v.Add('CFITSIO_LIB')
 v.Add('PYEXTCFLAGS')
+v.Add('PYEXTLINKFLAGS')
 env = Environment(variables=v,
                   PYEXT_USE_DISTUTILS=True)
 
