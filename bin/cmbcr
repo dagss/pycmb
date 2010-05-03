@@ -92,10 +92,11 @@ parser.add_argument('--sigma', type=str, default=None,
                     '0.002, 2e-3, 0.002K, 2mK, 2000uK (default unit is Kelvin).')
 parser.add_argument('-n', '--repeat', type=int, default=1,
                     help='Number of samples to produce.')
-parser.add_argument('--lprecond', type=int, default=60,
+parser.add_argument('--lprecond', type=int, default=None,
                     help='Tune the size of the preconditioner used in the CG iterations. '
                     'Larger value increase memory use and startup overhead but *may* '
-                    'decrease number of iterations needed for convergence.')
+                    'decrease number of iterations needed for convergence. '
+                    'Default: max(min(lmax/2, 60), 30).')
 parser.add_argument('--eps', type=float, default=1e-6,
                     help='Acceptable relative error of solution (default: 1e-6).')
 parser.add_argument('-f', '--force', type=bool, default=False,
@@ -113,7 +114,10 @@ parser.add_argument('-o', '--output', type=str, default='crsample-{p}-{i}.fits',
                     'per process (but remember to protect the string with ''-quotes so '
                     'that the shell doesn''t expand them first)')
 parser.add_argument('--render', action='store_true', default=False,
-                    help='Make a GIF image (by invoking HEALPix map2gif) for each sample.')
+                    help='Make a GIF image (by invoking HEALPix map2gif) for each sample. '
+                    'Useful during debugging.')
+parser.add_argument('--render-span', metavar='SPAN', type=float, default=0.4,
+                    help='If --render is given, use +- this value as the range')
 parser.add_argument('--output-dir', type=str, default='.',
                     help='Output directory (default: current location)')
 
@@ -250,6 +254,8 @@ observation = cmb.CmbObservation(
 
 if args.lmax is None:
     args.lmax = 3*observation.Nside - 1
+if args.lprecond is None:
+    args.lprecond = max([min([args.lmax // 2, 60]), 30])
 
 t0 = cmb.get_times()
 logger.info('Process-specific random seed: %d' % args.seed)
@@ -277,7 +283,8 @@ with cmb.working_directory(args.output_dir):
             cmb.log_times(logger, t0, 'Sample %d of %d (%%s): %s' % (i+1, args.repeat, outfile))
             if args.render:
                 giffile = '%s.gif' % outfile
-                if os.path.exists(outfile):
+                if os.path.exists(giffile):
                     logger.warning('Not creating GIF file, it already exists (and will '
                                    'be outdated): %s' % giffile)
-                map.map2gif(giffile, title=outfile, bar=True)
+                map.map2gif(giffile, title=outfile, bar=True, max=args.render_span,
+                            min=-args.render_span)
