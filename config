@@ -1,2 +1,0 @@
-HEALPIX4PY_INCLUDE = '../healpix4py'
-FORTRAN= 'ifort'
