@@ -7,7 +7,7 @@ import contextlib
 __all__ = ['get_times', 'log_times', 'working_directory', 'verbosity_to_logger',
            'as_random_state', 'check_l_increases',
            'locked_pytable', 'locked_h5file',
-           'pycmb_debug']
+           'pycmb_debug', 'timestats']
 
 # Use MPI for wall time if present, otherwise try for OpenMP wall time,
 # otherwise local clock
@@ -22,20 +22,20 @@ except ImportError:
 def get_times():
     return (clock(), wall_time())
 
-def log_times(logger, t0, msg='Done'):
+def log_times(logger, t0, msg='Done (time taken: %s)'):
+    logger.info(msg % timestats(t0))
+
+def timestats(t0):
     c0, w0 = t0
-    if openmp_present:
-        logger.info('%s, time taken: %f (wall), %f (CPU)' % (
-            msg,
-            wall_time() - w0,
-            clock() - c0))
+    dc, dw = clock() - c0, wall_time() - w0
+    if dc > 0.01 and dw > 0.01:
+        timestr = '%.2f wall, %.2f CPU' % (dw, dc)
     else:
-        logger.info('%s, time taken: %f (wall), %f (CPU)' % (
-            msg,
-            wall_time() - w0,
-            clock() - c0))
-    
+        timestr = '%.2e wall, %.2e CPU' % (dw, dc)
+    return timestr
+
 _verbosity_to_loglevel = [logging.WARNING, logging.INFO, logging.DEBUG]
+
 
 def as_random_state(seed):
     if seed is None:

@@ -1,0 +1,2 @@
+cmbcr --seed=34 --lmax=70 --lprecond=30 --rms=rms.fits -n 3 $* \
+  power_spectrum.dat beam.fits mask.fits temp.fits

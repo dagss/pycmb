@@ -58,6 +58,7 @@ class ConstrainedSignalSampler(object):
         beam_and_window = pixwin * beam_and_window
         del pixwin
 
+        self.eps = eps
         self.observations = observations
         self.lmin = lmin
         self.lmax = lmax
@@ -77,7 +78,6 @@ class ConstrainedSignalSampler(object):
         #d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
         scaled_Ninv_d = self.scaled_Ninv_map * d
         self.Ninv_d = scaled_Ninv_d.to_harmonic(lmin, lmax, use_weights=False).to_real()
-        
 
 
         preconditioner.set_logger(make_sublogger(logger, 'precond'))
@@ -166,18 +166,29 @@ class ConstrainedSignalSampler(object):
                      
     def sample_signal_details(self, rhs=None,
                               norm_order=None, max_iterations=10000,
-                              eps=1e-8, raise_error=True,
+                              eps=None, raise_error=True,
                               find_mean=False):
         P, L = self.P_L
 
+        if eps is None:
+            eps = self.eps
+            
         if rhs is None:
             rhs = self.sample_rhs(find_mean=find_mean)
+
+        self.logger.info('Starting CG iterations')
+        t0 = get_times()
 
         cg_logger = make_sublogger(self.logger, 'cg')
         x0 = harmonic_sphere_map(0, self.lmin, self.lmax, is_complex=False)
         x, info = CG(self.cg_mul_lhs, rhs, x0=x0, precond=self.preconditioner,
                      norm_order=norm_order, maxit=max_iterations, eps=eps,
                      raise_error=raise_error, logger=cg_logger)
+
+        self.logger.info('CG done, %d its, %.2e res. (%s)',
+                         info['iterations'],
+                         info['residuals'][-1],
+                         timestats(t0))
 
         # Got x; need to scale back -- x = L^-1 sdraw
 #        x.to_pixel(64).map2gif('x.gif', title='x')

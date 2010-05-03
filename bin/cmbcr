@@ -1,0 +1,264 @@
+#!/usr/bin/env python
+from __future__ import division
+
+__doc__ = """\
+cmbcr - Constrained Realization of Cosmic Microwave Background maps
+
+Makes a constrained sample from CMB maps given an input map, a noise
+map, an assumed power spectrum, a beam, and a mask. The effect is to
+effectively "unmask" the masked input map -- provide a sample of what
+is under the mask, given the power spectrum and noise properties.
+
+a uniform prior. Only temperature maps with uncorrelated noise is
+supported.
+
+Copyright (C) 2010 Dag Sverre Seljebotn
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version. See <http://www.gnu.org/licenses/>.
+
+EXAMPLES:
+
+Make a single sample, using lmax=Nside^3-1:
+
+  cmbcr --rms=rms.fits beam.dat mask.fits indata.fits
+
+The result is saved to crsample-0-0.fits (no overwriting is done
+by default).
+
+If the noise information is present in a field named 'RMS' in the first
+extension.
+
+Make 10 samples to 10 different files, specifying lmax=80 and a random
+seed, and downgrade all maps to Nside=32:
+
+  cmbcr --lmax=80 -n 10 --seed=3422 --downgrade-nside=32 \\
+      beam.dat rms.fits mask.fits indata.fits sample-%d.fits
+
+If sample "sample-0.fits", "sample-1.fits", and "sample-2.fits"
+already exists, then only 7 samples will be made. This makes sampling
+jobs easily restartable.
+
+
+ACKNOWLEDGEMENTS:
+
+This software would have been impossible without the help of Hans
+Kristian Eriksen and the example of his CMB Gibbs sampler software
+Commander.
+
+FILE FORMATS:
+
+The input and output files are expected as FITS files, in the form
+"filename:extno:field" (0-based extension number, 1 is the
+default). If no extension number is supplied, 1 is assumed. The field
+can be provided either by index (0-based!) or by name. If no field
+number is specified, the map is assumed to contain either a single
+map, or contain both a 'TEMPERATURE' and 'N_OBS' field.
+
+"""
+
+import argparse
+import cmb
+import numpy as np
+import sys
+import os
+import logging
+
+parser = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+
+# Optional args + noise choices
+parser.add_argument('--seed', type=int, default=None,
+                    help='Random seed (integer value).')
+parser.add_argument('-l', '--lmax', type=int, default=None,
+                    help='Maximum l value considered when sampling the underlying signal.')
+parser.add_argument('--rms', type=str, default=None,
+                    help='Filename (or FITS-pointer, see above) of a map specifying the noise '
+                    'as RMS.')
+parser.add_argument('--nobs', type=str, default=None,
+                    help='Filename (or FITS-pointer, see above) of a map specifying the noise '
+                    'as number of observations. When specifying this, --sigma must also be '
+                    'given.')
+parser.add_argument('--sigma', type=str, default=None,
+                    help='sigma0-value to use with --nobs to produce RMS. Valid forms: '
+                    '0.002, 2e-3, 0.002K, 2mK, 2000uK (default unit is Kelvin).')
+parser.add_argument('-n', '--repeat', type=int, default=1,
+                    help='Number of samples to produce.')
+parser.add_argument('--lprecond', type=int, default=60,
+                    help='Tune the size of the preconditioner used in the CG iterations. '
+                    'Larger value increase memory use and startup overhead but *may* '
+                    'decrease number of iterations needed for convergence.')
+parser.add_argument('--eps', type=float, default=1e-6,
+                    help='Acceptable relative error of solution (default: 1e-6).')
+parser.add_argument('-f', '--force', type=bool, default=False,
+                    help='Overwrite existing output files rather than skipping.')
+parser.add_argument('--quiet', action='store_true', default=False,
+                    help='Only output error messages (same as --verbose=0)')
+parser.add_argument('-v', '--verbose', metavar='VERBOSITY', default=1, type=int,
+                    help='Set verbosity level (0-4, default 1)')
+parser.add_argument('--procid', type=str, default=None,
+                    help='ID of process for log message and ouput file (default: '
+                    'Try MPI process number, then $SLURM_PROCID, then use 0)')
+parser.add_argument('-o', '--output', type=str, default='crsample-{p}-{i}.fits',
+                    help='Output filename pattern. {p} is replaced with process ID and '
+                    '{i} with sample index. Environment variables $SOMEVAR are expanded '
+                    'per process (but remember to protect the string with ''-quotes so '
+                    'that the shell doesn''t expand them first)')
+parser.add_argument('--output-dir', type=str, default='.',
+                    help='Output directory (default: current location)')
+
+## parser.add_argument('--uniform-noise',
+##                     help='Use uniform noise of the given value per pixel in the  This is '
+##                     'used aft
+##                          (see --sigma for possible values).'
+
+# Mandatory arguments
+parser.add_argument('power_spectrum', type=str,
+                    help='The assumed power spectrum.')
+parser.add_argument('beam', type=str,
+                    help='The beam.')
+parser.add_argument('mask', type=str,
+                    help='The mask.')
+parser.add_argument('observed', type=str,
+                    help='The observed map.')
+
+# Parse args
+args = parser.parse_args()
+
+# Fill in some defaults
+
+def find_procid():
+    try:
+        from mpi4py.MPI import COMM_WORLD as comm
+        if comm.Get_size() > 0:
+            return comm.Get_rank()
+    except ImportError:
+        pass
+
+    if 'SLURM_PROCID' in os.environ:
+        return int(os.environ['SLURM_PROCID'])
+
+    return 0
+
+args.output = os.path.expandvars(args.output)
+if args.procid is None:
+    args.procid = find_procid()
+
+def fitsdesc(x, defext=1, deffield=0):
+    if x is None:
+        return None
+    else:
+        if ':' in x:
+            return x.split(':')
+        else:
+            return (x, defext, deffield)
+
+
+#
+# Configuration of loggers/verbosity levels. Basically map verbosity
+# integers to different levels for different logs
+#
+log_configs = [
+     # default level, [overrides]
+# Level 0
+    (logging.WARNING, {}),
+# Level 1
+    (logging.INFO, {
+      'cr': logging.WARNING,
+      'precond': logging.WARNING,
+      'cg': logging.WARNING,
+    }),
+# Level 2
+    (logging.INFO, {
+      'cr': logging.INFO,
+      'precond': logging.INFO,
+      'cg': logging.WARNING,
+    }),
+# Level 3
+    (logging.INFO, {}),
+# Level 4
+    (logging.DEBUG, {}),
+]
+
+logging.basicConfig(format='%s %%(levelname)s:%%(name)s:%%(message)s' % args.procid)
+if args.verbose >= len(log_configs):
+    args.verbose = len(log_configs) - 1
+lc = log_configs[args.verbose]
+
+logger = logging.getLogger()
+logger.setLevel(lc[0])
+for name, lvl in lc[1].iteritems():
+    logging.getLogger(name).setLevel(lvl)
+
+
+
+#
+# Set up the sampler
+#
+
+model = cmb.IsotropicCmbModel(
+    # The power spectrum data file
+    power_spectrum=args.power_spectrum
+)
+
+observation = cmb.CmbObservation(
+    sigma0=args.sigma,
+    beam=args.beam,
+    mask=fitsdesc(args.mask),
+    rms=fitsdesc(args.rms),
+    n_obs=fitsdesc(args.nobs, 1, 'N_OBS'),
+    temperature=fitsdesc(args.observed)
+        # Use uniform RMS instead of a map
+        ##uniform_rms=5e-5,
+
+        # Add uniform RMS in addition to map
+        ##add_noise=5e-5,
+
+        # Explicit n_obs map
+        ##n_obs=('my_nobs_map.fits', 1, 'TEMPERATURE'),
+
+        # Explicit temperature map
+        ##temperature=('my_temp.fits', 1, 'TEMPERATURE'),
+
+        #Nside=32,
+        # When downgrading the mask, pixel values below this value
+        # will be set to 0, the ones above to 1:
+        #mask_downgrade_treshold=.5
+        # A random seed can be provided for the use of uniform_rms/add_noise:
+    ##seed=34,
+)
+
+if args.lmax is None:
+    args.lmax = 3*observation.Nside - 1
+
+if args.seed is None:
+    # xor with PID, to remove the tiny chance that two processes
+    # started at the same time get the same random (on systems with
+    # /dev/random this might not even be necesarry *shrug*)
+    args.seed = np.random.randint(sys.maxint) ^ os.getpid()
+
+t0 = cmb.get_times()
+logger.info('Initializing')
+sampler = cmb.ConstrainedSignalSampler(
+    model=model,
+    observations=[observation],
+    lmax=args.lmax,
+    lprecond=min([args.lprecond, args.lmax]),
+    logger=logger,
+    seed=args.seed,
+    eps=args.eps
+)
+cmb.log_times(logger, t0, 'Done initializing (%s)')
+
+with cmb.working_directory(args.output_dir):
+    for i in range(args.repeat):
+        outfile = args.output.format(i=i, p=args.procid)
+        if os.path.exists(outfile) and not args.force:
+            logger.warning('File exists, skipping sample: %s' % outfile)
+        else:
+            t0 = cmb.get_times()
+            signal, [map] = sampler.sample_unmasked()
+            map.to_fits(outfile)
+            cmb.log_times(logger, t0, 'Sample %d of %d (%%s): %s' % (i+1, args.repeat, outfile))

@@ -146,7 +146,7 @@ def CG(matrix, b, x0=None, maxit=10**3, eps=10**-8, relative_eps=True,
 
         residual = np.linalg.norm(r, norm_order)
         if logger is not None:
-            logger.info('Iteration %d: Residual %e (terminating at %e)', k, residual, eps)
+            logger.info('Iteration %d: Residual %e (terminating at %e)', k+1, residual, eps)
         residuals.append(residual)
         
         if residual < eps:

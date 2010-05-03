@@ -71,19 +71,19 @@ def probe_fits(desc, wanted_units, default_ext=None, default_field=None):
     if isinstance(field, int):
         if field > nfields:
             raise ValueError('Cannot find FITS field: %s' % repr(desc))
-        if field <= 0:
-            raise ValueError('Field number is 1-based: %s' % repr(desc))
+        if field < 0:
+            raise ValueError('Field number must be positive: %s' % repr(desc))
     else:
         found = False
         for i in range(1, nfields+1):
             if ext.header['TTYPE%d' % i] == field:
-                field = i
+                field = i - 1
                 found = True
                 break
         if not found:
             raise ValueError('Cannot find FITS field: %s' % repr(desc))
 
-    units = ext.header['TUNIT%d' % i].split(',')[0]
+    units = ext.header['TUNIT%d' % (field + 1)].split(',')[0]
     if wanted_units == 'temperature':
         if units != 'mK':
             raise ValueError('Temperature units expected but %s found: %s' % (units, repr(desc)))
@@ -93,10 +93,27 @@ def probe_fits(desc, wanted_units, default_ext=None, default_field=None):
 
     return ext.header['NSIDE'], desc
  
+
+def beam_from_fits(f, dtype=np.double):
+     msg = 'Unexpected FITS data for beam'
+     import pyfits
+     if isinstance(f, str):
+         f = pyfits.open(f)
+     if len(f) != 2:
+         raise ValueError(msg)
+     data = f[1].data.field(0).astype(dtype)
+     return ClArray(data, 0, data.shape[0]-1)
+
 def as_beam(beam):
     if isinstance(beam, ClArray):
         return beam
     else:
+        try:
+            # Attempt load from file
+            return beam_from_fits(beam)
+        except IOError:
+            pass # fall through to text file attempt
+        
         # Load from text file, (l, beam)
         data = np.loadtxt(beam, dtype=np.dtype([('l', np.int), ('beam', np.double)]))
         ls = data['l']
@@ -142,8 +159,8 @@ def map_from_fits(desc, type, dtype=np.double):
     filename, extno, field = desc
     if extno is None or field is None:
         raise ValueError("extno and field must be provided")
-    if isinstance(field, int) and field <= 0:
-        raise ValueError("field must be >= 1")
+    if isinstance(field, int) and field < 0:
+        raise ValueError("field must be >= 0")
     import pyfits
     hdulist = pyfits.open(filename)
     try:
@@ -155,6 +172,8 @@ def map_from_fits(desc, type, dtype=np.double):
         if type == 'temperature':
             if units == 'mK':
                 mapdata *= 1e-3 # convert to Kelvin
+            elif units == 'uK':
+                mapdata *= 1e-6
             else:
                 raise FormatError('Do not recognize temperature units: %s' % (units))
         elif type == 'count':
