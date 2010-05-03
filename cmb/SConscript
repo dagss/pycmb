@@ -5,8 +5,7 @@ env.PythonExtension('noise', ['noise.pyx'])
 
 objs = env.SharedObject(Glob("slatec/src/*.f"))
 objs += env.PythonObject(['slatec.pyx'])
-env.PythonExtension('slatec', objs, PYEXTLINK='$FORTRAN',
-                    PYEXTLINKFLAGS=['-shared'])
+env.PythonExtension('slatec', objs, PYEXTLINK='$FORTRAN')
 
 env.PythonExtension('wigner', ['wigner.pyx'], LIBS=['m'])
 
