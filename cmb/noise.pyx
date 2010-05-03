@@ -191,12 +191,13 @@ def Ninv_to_harmonic_complex_block(lmin, lmax, Ninv, diagonal_only=False,
 
     Ncoef = ls.shape[0]
     out = np.empty((Ncoef, Ncoef), complex_dtype)
-
-    numthreads = min([openmp.get_max_threads(), Ncoef, 1])
-    fullset = np.arange(Ncoef, dtype=index_dtype)
-    threads = []
-    terminator = threading.Event()
     inverse_pixel_noise_to_harmonic(ls, ms, Ninv, Npix, lmax, out)
+
+# Debug code for multithreaded support:
+#    terminator = threading.Event()
+#    fullset = np.arange(Ncoef, dtype=index_dtype)
+#    threads = []
+#    numthreads = min([openmp.get_max_threads(), Ncoef, 1])
 #    for i in range(numthreads):
 #        subset = fullset[i::numthreads]
 #        T = threading.Thread(target=inverse_pixel_noise_to_harmonic,
@@ -226,7 +227,6 @@ def Ninv_to_harmonic_complex_block(lmin, lmax, Ninv, diagonal_only=False,
 ##         print 'returning'
 ##         raise
     return out
-#inverse_pixel_noise_to_harmonic(ls, ms, Ninv, diagonal_only, Npix, lmax=lmax)
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
