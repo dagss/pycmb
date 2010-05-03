@@ -60,7 +60,6 @@ map, or contain both a 'TEMPERATURE' and 'N_OBS' field.
 """
 
 import argparse
-import cmb
 import numpy as np
 import sys
 import os
@@ -106,6 +105,8 @@ parser.add_argument('-o', '--output', type=str, default='crsample-{p}-{i}.fits',
                     '{i} with sample index. Environment variables $SOMEVAR are expanded '
                     'per process (but remember to protect the string with ''-quotes so '
                     'that the shell doesn''t expand them first)')
+parser.add_argument('--render', action='store_true', default=False,
+                    help='Make a GIF image (by invoking HEALPix map2gif) for each sample.')
 parser.add_argument('--output-dir', type=str, default='.',
                     help='Output directory (default: current location)')
 
@@ -115,7 +116,7 @@ parser.add_argument('--output-dir', type=str, default='.',
 ##                          (see --sigma for possible values).'
 
 # Mandatory arguments
-parser.add_argument('power_spectrum', type=str,
+parser.add_argument('powerspectrum', type=str,
                     help='The assumed power spectrum.')
 parser.add_argument('beam', type=str,
                     help='The beam.')
@@ -198,9 +199,12 @@ for name, lvl in lc[1].iteritems():
 # Set up the sampler
 #
 
+import cmb # time-consuming, so putting after argparsing
+
+
 model = cmb.IsotropicCmbModel(
     # The power spectrum data file
-    power_spectrum=args.power_spectrum
+    power_spectrum=args.powerspectrum
 )
 
 observation = cmb.CmbObservation(
@@ -262,3 +266,9 @@ with cmb.working_directory(args.output_dir):
             signal, [map] = sampler.sample_unmasked()
             map.to_fits(outfile)
             cmb.log_times(logger, t0, 'Sample %d of %d (%%s): %s' % (i+1, args.repeat, outfile))
+            if args.render:
+                giffile = '%s.gif' % outfile
+                if os.path.exists(outfile):
+                    logger.warning('Not creating GIF file, it already exists (and will '
+                                   'be outdated): %s' % giffile)
+                map.map2gif(giffile, title=outfile, bar=True)

@@ -10,3 +10,4 @@ config
 *.#*
 .sconsign.dblite
 *.ps
+out
