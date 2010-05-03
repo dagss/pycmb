@@ -15,7 +15,6 @@ from utils cimport imax, alm_fixnegidx
 from cython cimport boundscheck, wraparound
 from slatec cimport drc3jj_fast
 import oomatrix
-from healpix import openmp
 
 cdef double pi
 from numpy import pi
