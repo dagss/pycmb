@@ -4,60 +4,66 @@ from __future__ import division
 __doc__ = """\
 cmbcr - Constrained Realization of Cosmic Microwave Background maps
 
-Makes a constrained sample from CMB maps given an input map, a noise
-map, an assumed power spectrum, a beam, and a mask. The effect is to
-effectively "unmask" the masked input map -- provide a sample of what
-is under the mask, given the power spectrum and noise properties.
+  Makes a constrained simulated CMB map given an input map, a noise
+  map, an assumed power spectrum, a beam, and a mask. The effect is to
+  effectively "unmask" the input map -- provide a sample of what
+  is under the mask, given the power spectrum and noise properties.
 
-a uniform prior. Only temperature maps with uncorrelated noise is
-supported.
+  The signal sample used to replace the information in the masked area
+  is taken from the posterior distribution of the signal conditional
+  on the input listed above, assuming normality, and using a uniform
+  prior. Only temperature maps with uncorrelated noise is supported.
 
-Copyright (C) 2010 Dag Sverre Seljebotn
+  TODO: Provide paper reference.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or
-(at your option) any later version. See <http://www.gnu.org/licenses/>.
+author and license:
 
-EXAMPLES:
+  Copyright (C) 2010 Dag Sverre Seljebotn
 
-Make a single sample, using lmax=Nside^3-1:
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 2 of the License, or
+  (at your option) any later version. See <http://www.gnu.org/licenses/>.
 
-  cmbcr --rms=rms.fits beam.dat mask.fits indata.fits
+examples:
 
-The result is saved to crsample-0-0.fits (no overwriting is done
-by default).
+  Make a single sample, using lmax=Nside^3-1:
 
-If the noise information is present in a field named 'RMS' in the first
-extension.
+    cmbcr --rms=rms.fits beam.dat mask.fits indata.fits
 
-Make 10 samples to 10 different files, specifying lmax=80 and a random
-seed, and downgrade all maps to Nside=32:
+  The result is saved to crsample-0-0.fits (no overwriting is done
+  by default).
 
-  cmbcr --lmax=80 -n 10 --seed=3422 --downgrade-nside=32 \\
-      beam.dat rms.fits mask.fits indata.fits sample-%d.fits
+  If the noise information is present in a field named 'RMS' in the first
+  extension.
 
-If sample "sample-0.fits", "sample-1.fits", and "sample-2.fits"
-already exists, then only 7 samples will be made. This makes sampling
-jobs easily restartable.
+  Make 10 samples to 10 different files, specifying lmax=80 and a random
+  seed, and downgrade all maps to Nside=32:
 
+    cmbcr --lmax=80 -n 10 --seed=3422 --downgrade-nside=32 \\
+        beam.dat rms.fits mask.fits indata.fits sample-%d.fits
 
-ACKNOWLEDGEMENTS:
+  If sample "sample-0.fits", "sample-1.fits", and "sample-2.fits"
+  already exists, then only 7 samples will be made. This makes sampling
+  jobs easily restartable.
 
-This software would have been impossible without the help of Hans
-Kristian Eriksen and the example of his CMB Gibbs sampler software
-Commander.
+acknowledgement:
 
-FILE FORMATS:
-
-The input and output files are expected as FITS files, in the form
-"filename:extno:field" (0-based extension number, 1 is the
-default). If no extension number is supplied, 1 is assumed. The field
-can be provided either by index (0-based!) or by name. If no field
-number is specified, the map is assumed to contain either a single
-map, or contain both a 'TEMPERATURE' and 'N_OBS' field.
-
+  This software would have been impossible without the help of Hans
+  Kristian Eriksen and the example of his CMB Gibbs sampler software
+  Commander.
 """
+  
+## FILE FORMATS:
+
+## The input and output files are expected as FITS files, in the form
+## "filename:extno:field" (0-based extension number, 1 is the
+## default). If no extension number is supplied, 1 is assumed. The field
+## can be provided either by index (0-based!) or by name. If no field
+## number is specified, the map is assumed to contain either a single
+## map, or contain both a 'TEMPERATURE' and 'N_OBS' field.
+
+##"""
 
 import argparse
 import numpy as np
@@ -70,7 +76,8 @@ parser = argparse.ArgumentParser(description=__doc__,
 
 # Optional args + noise choices
 parser.add_argument('--seed', type=int, default=None,
-                    help='Random seed (integer value).')
+                    help='Random seed (integer value). It will be combined with the '
+                    'process ID so that parallel jobs don''t produce the same samples.')
 parser.add_argument('-l', '--lmax', type=int, default=None,
                     help='Maximum l value considered when sampling the underlying signal.')
 parser.add_argument('--rms', type=str, default=None,
@@ -143,6 +150,9 @@ def find_procid():
 
     return 0
 
+if args.seed is None:
+    args.seed = np.random.randint(sys.maxint)
+
 args.output = os.path.expandvars(args.output)
 if args.procid is None:
     args.procid = find_procid()
@@ -155,6 +165,10 @@ def fitsdesc(x, defext=1, deffield=0):
             return x.split(':')
         else:
             return (x, defext, deffield)
+
+# Combine random seed with process ID to create unique seed
+# for each process
+args.seed = (args.seed << 16) ^ hash(args.procid)
 
 
 #
@@ -237,13 +251,8 @@ observation = cmb.CmbObservation(
 if args.lmax is None:
     args.lmax = 3*observation.Nside - 1
 
-if args.seed is None:
-    # xor with PID, to remove the tiny chance that two processes
-    # started at the same time get the same random (on systems with
-    # /dev/random this might not even be necesarry *shrug*)
-    args.seed = np.random.randint(sys.maxint) ^ os.getpid()
-
 t0 = cmb.get_times()
+logger.info('Process-specific random seed: %d' % args.seed)
 logger.info('Initializing')
 sampler = cmb.ConstrainedSignalSampler(
     model=model,
