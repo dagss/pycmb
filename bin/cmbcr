@@ -97,7 +97,8 @@ parser.add_argument('-v', '--verbose', metavar='VERBOSITY', default=1, type=int,
                     help='Set verbosity level (0-4, default 1)')
 parser.add_argument('--procid', type=str, default=None,
                     help='ID of process for log message and ouput file (default: '
-                    'Try MPI process number, then $SLURM_PROCID, then use 0)')
+                    'Try MPI process number, then $SLURM_PROCID, then use 0). '
+                    'Environment variables accepted, see -o.')
 parser.add_argument('-o', '--output', type=str, default='crsample-{p}-{i}.fits',
                     help='Output filename pattern. {p} is replaced with process ID and '
                     '{i} with sample index. Environment variables $SOMEVAR are expanded '
@@ -147,6 +148,14 @@ def find_procid():
 args.output = os.path.expandvars(args.output)
 if args.procid is None:
     args.procid = find_procid()
+else:
+    args.procid = os.path.expandvars(args.procid)
+    try:
+        # Canonicalize to integer if possible (more predictable
+        # random seed behaviour)
+        args.procid = int(args.procid)
+    except ValueError:
+        pass
 
 def fitsdesc(x, defext=1, deffield=0):
     if x is None:
@@ -161,6 +170,11 @@ def fitsdesc(x, defext=1, deffield=0):
 # for each process
 if args.seed is None:
     args.seed = np.random.randint(sys.maxint)
+elif args.seed > 0x7FFF:
+     # If we proceed we'll loose bits and two different random seeds can produce
+     # identical results. Of course, we could use less than 16 bits
+     # for the process ID if this becomes a problem.
+    raise ValueError('Random seed too large, must be less than %d' % 0x7FFF)
 args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0x7FFFFFFF)
 
 
