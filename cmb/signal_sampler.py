@@ -57,6 +57,10 @@ class ConstrainedSignalSampler(object):
         beam_and_window = pixwin * beam_and_window
         del pixwin
 
+        if logger is None:
+            logger = logging.getLogger('cmb.cr')
+            logger.setLevel(logging.INFO)
+
         self.eps = eps
         self.observations = observations
         self.lmin = lmin
