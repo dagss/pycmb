@@ -4,6 +4,9 @@ from mpi4py import MPI
 import tables as tab
 from cmb.mpiutils import *
 
+samples_filename = out_dir('samples_pycmb.h5')
+
+
 comm = MPI.COMM_WORLD
 
 sampler = ConstrainedSignalSampler(
@@ -14,8 +17,8 @@ sampler = ConstrainedSignalSampler(
     seed=83 + comm.Get_rank()*10000,
     lmax=lmax)            
 
-J = 1000
-Nalm = (lmax + 1)**2 - lmin**2
+J = 3000
+Nalm = (lmax + 1)**2
 
 time_lock = time_io = 0
 
@@ -32,7 +35,8 @@ def persist_sample(signal):
         else:
             samples = f['samples']
             samples.resize((samples.shape[0] + 1, samples.shape[1]))
-        samples[-1,:] = signal
+        samples[-1,:lmin**2] = 0
+        samples[-1,lmin**2:] = signal
     time_io += MPI.Wtime() - t0
     t = MPI.Wtime() - t0_global
     print '  . Closed datafile', comm.Get_rank(), MPI.Wtime()

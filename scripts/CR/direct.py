@@ -20,7 +20,7 @@ Binv = B.inverse()
 Sigma_direct = P.H * L * P * Binv * P.H * L.H * P
 
 d = obs.load_temperature_mutable('ring')
-d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
+#d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
 
 Ninv_d = Ninv_map * d * Npix / 4 / pi
 A_Ninv_d = A * Ninv_d.to_real_harmonic(0, lmax)

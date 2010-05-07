@@ -35,8 +35,6 @@ def plot(x, title, ax=None):
     M.map2gif('%s.gif' % title, title=title)
 
 out_dir = working_directory('$RESULT_PATH/CR/5', create=MPI.COMM_WORLD.Get_rank() == 0)
-samples_filename = out_dir('CR_test_samples.h5')
-
 
 
 Nside = 32
@@ -72,7 +70,7 @@ with working_directory('$WMAP_PATH'):
         #sigma0=3.319e-3,
         #n_obs=('wmap_da_forered_iqumap_r9_7yr_V1_v4.fits', 1, 'N_OBS'),
         beam=beam,# 'wmap_V1_ampl_bl_7yr_v4.txt',
-        #mask=('wmap_temperature_analysis_mask_r9_7yr_v4.fits', 1, 'TEMPERATURE'),
+        mask=('wmap_temperature_analysis_mask_r9_7yr_v4.fits', 1, 'TEMPERATURE'),
         mask_downgrade_treshold=.5,
         seed=22,
         uniform_rms=np.sqrt(Npix / np.sqrt(4*np.pi) * 1e-12)
@@ -85,7 +83,3 @@ signal, [obs] = model.simulate_observations(lmin=lmin, lmax=lmax_sim,
                                             properties=[obsprop],
                                             seed=45)
 
-def load_samples():
-    with locked_h5file(samples_filename, 'r') as f:
-        samples = f['samples']
-        return samples[...].T
