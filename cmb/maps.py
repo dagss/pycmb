@@ -968,7 +968,7 @@ class _HarmonicSphereMap(NDArraySubclassBase):
 
         return _PixelSphereMap(out, pixel_order='ring')
 
-    def rotate(self, psi, theta, phi, algorithm=None):
+    def rotate(self, psi, theta, phi):
         """
         Returns a rotated copy of self. O(lmax^3).
 
@@ -1000,13 +1000,6 @@ class _HarmonicSphereMap(NDArraySubclassBase):
 
         size = self.shape[1:]
 
-        if algorithm == 'single':
-            single = True
-        elif algorithm is None or algorithm == 'default':
-            single = False
-        else:
-            raise ValueError()
-
         # Todo: Optimize -- have lmin in complexpacked2complexmatrix
         out = np.empty((l_to_lm(self.lmax + 1),) + size, complex_dtype, order='F')
         out[:l_to_lm(self.lmin), ...] = 0
@@ -1017,7 +1010,7 @@ class _HarmonicSphereMap(NDArraySubclassBase):
         for mapidx in np.ndindex(*size):
             idx = (slice(None),) + mapidx
             mapdatautils.alm_complexpacked2complexmatrix(out[idx], alm_matrix[0,:,:])
-            rotate_alm_d(self.lmax, alm_matrix, psi, theta, phi, single=single)
+            rotate_alm_d(self.lmax, alm_matrix, psi, theta, phi)
             mapdatautils.alm_complexmatrix2complexpacked(alm_matrix[0,:,:], out[idx])
         out = out[l_to_lm(self.lmin):, ...]
         return _HarmonicSphereMap(out, self.lmin, self.lmax, COMPLEX_BRIEF)
