@@ -60,9 +60,9 @@ def doit(name, beam, rms):
         mask=mask
     )
     
-    signal, [obs] = model.simulate_observations(2, lmax,
-                                                properties=[obsprop],
-                                                seed=45)
+    signal, [obs] = model.draw_observations(2, lmax,
+                                            properties=[obsprop],
+                                            seed=45)
     signal.to_pixel(Nside).map2gif('signal-%s.gif' % name, title='%s - signal'%name)
     obs.load_temperature().map2gif('%s-obs.gif' % name, title='%s - observation' % name)
 

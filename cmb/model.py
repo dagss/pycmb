@@ -9,10 +9,10 @@ class CmbModel(object):
     def default_lmax(self, Nside):
         return min([3*Nside-1, self.lmax])
 
-    def simulate_observations(self, lmin=None, lmax=None, properties=None,
+    def draw_observations(self, lmin=None, lmax=None, properties=None,
                              seed=None):
         """
-        Simulates an observation. The result is a signal and a list of
+        Draws observations. The result is a signal and a list of
         simulated CmbObservation instances each corresponding to
         a set of observation properties.
 

@@ -79,7 +79,7 @@ with working_directory('$WMAP_PATH'):
 #
 # Simulate the known signal and corresponding observation
 #
-signal, [obs] = model.simulate_observations(lmin=lmin, lmax=lmax_sim,
-                                            properties=[obsprop],
-                                            seed=45)
+signal, [obs] = model.draw_observations(lmin=lmin, lmax=lmax_sim,
+                                        properties=[obsprop],
+                                        seed=45)
 
