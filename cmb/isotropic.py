@@ -200,18 +200,9 @@ class IsotropicCmbModel(CmbModel):
         return self._power_spectrum.copy()
 
     def plot(self, ax=None, lmax=None, scale=True):
-        if ax is None:
-            from matplotlib import pyplot as plt
-            fig = plt.figure()
-            ax = fig.add_subplot(1,1,1)
-        if lmax is None:
-            lmax = self.lmax
-        Cl = self.get_power_spectrum().by_l[self.lmin, lmax+1]
-        if scale:
-            Cl = Cl / (2*np.pi / (l * (l+1)) * 1e-12)
-        l = np.arange(self.lmin, lmax + 1)
-        ax.plot(l, Cl)
-        return fig, ax
+        import maps
+        cl = self.get_power_spectrum().by_l[self.lmin, lmax+1]
+        maps.plot_power_spectrum(cl, ax=ax, title='Model power spectrum')
 
     def get_scale(self, lmax):
         l = np.arange(0, lmax + 1)

@@ -1,11 +1,6 @@
 
 
-from maps import (pixel_sphere_map, harmonic_sphere_map,
-                  dipole_sphere_map,
-                  simulate_harmonic_sphere_maps, simulate_pixel_sphere_maps,
-                  sphere_maps_from_fits,
-                  random_real_harmonic_sphere_map,
-                  harmonic_sphere_map_from_fits)
+from maps import *
 
 from cmbdata import default as cmb_data_store
 

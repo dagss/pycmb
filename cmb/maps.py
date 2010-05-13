@@ -16,6 +16,14 @@ from mapdatautils import py_l_to_lm as l_to_lm, num_alm_to_lmax
 import operator
 import healpix.resources
 
+__all__ = ['pixel_sphere_map', 'harmonic_sphere_map',
+           'dipole_sphere_map',
+           'simulate_harmonic_sphere_maps', 'simulate_pixel_sphere_maps',
+           'sphere_maps_from_fits',
+           'random_real_harmonic_sphere_map',
+           'harmonic_sphere_map_from_fits',
+           'plot_power_spectrum']
+
 healpix_res = healpix.resources.get_default()
 
 #default_plot_mode = 'interactive' # or 'file'
@@ -1030,6 +1038,14 @@ class _HarmonicSphereMap(NDArraySubclassBase):
 ##             newdata[:coefs_to_copy,...] = self[:coefs_to_copy,...]
 ##             return _HarmonicSphereMap(newdata, lmax)
 
+    def power_spectrum(self):
+        if self.format is not REAL_FULL:
+            return self.to_real().power_spectrum()
+        assert self.ndim == 1
+        from isotropic import ClArray
+        out = mapdatautils.compute_power_spectrum_real(self.lmin, self.lmax, self)
+        return ClArray(out, self.lmin, self.lmax)
+
     def to_harmonic(self, lmax):
         self._check_not_pretending()
         return self.change_lmax(lmax)
@@ -1071,6 +1087,19 @@ class _HarmonicSphereMap(NDArraySubclassBase):
 
         pyfits.HDUList([pyfits.PrimaryHDU(), tab]).writeto(filename)    
 
+def plot_power_spectrum(Cl, ax=None, title=None, ylim=None):
+    lmin = Cl.lmin
+    lmax = Cl.lmax
+    import matplotlib.pyplot as plt
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1, title=title)
+    l = np.arange(lmin, lmax + 1)
+    scaled_Cl = (l * (l+1)) * Cl / (2*np.pi)
+    ret = ax.plot(l, scaled_Cl)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+    return ret
 
 def harmonic_sphere_map_from_fits(filename, extno=1, fitsformat='healpix', dtype=np.cdouble):
     if fitsformat != 'healpix':

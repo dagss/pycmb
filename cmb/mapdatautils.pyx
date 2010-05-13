@@ -56,8 +56,9 @@ def Cl2S(lmin, lmax, Cl):
         Sdiag[(al0_idx-l):(al0_idx+l+1)] = Cl[l-lmin]
     return Sdiag
 
-def calcsigma(int lmin, int lmax, np.ndarray[real_t] alm):
+def compute_power_spectrum_real(int lmin, int lmax, np.ndarray[real_t] alm):
     """
+    
     INPUT:
       alm - packed alm array
     OUTPUT:
@@ -71,18 +72,16 @@ def calcsigma(int lmin, int lmax, np.ndarray[real_t] alm):
     >>> print calcsigma(1, lmax, x[1**2:])
     [ 4.  9.]
     """
-    cdef int l, l0
-    cdef real_t tmp, tmpsum, sqr2
-    cdef np.ndarray[real_t] sigma = np.zeros((lmax+1-lmin,), real_dtype)
-    sqr2 = np.sqrt(2)
+    cdef int l, m, idx
+    cdef real_t s
+    cdef np.ndarray[real_t] out = np.zeros((lmax+1-lmin,), real_dtype)
     for l in range(lmin, lmax+1):
-        l0 = l*l + l - lmin*lmin
-        tmpsum = 0
+        idx = l*l + l - lmin*lmin
+        s = 0
         for m in range(-l, l+1):
-            tmp = alm[l0 + m]
-            tmpsum += tmp * tmp
-        sigma[l-lmin] = tmpsum / (2*l+1)
-    return sigma
+            s += alm[idx + m]**2
+        out[l - lmin] = s / (2*l+1)
+    return out
 
 def output_alm(nside, alm, filename):
     dummy, lmax, mmax = alm.shape

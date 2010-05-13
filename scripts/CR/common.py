@@ -73,7 +73,7 @@ with working_directory('$WMAP_PATH'):
         mask=('wmap_temperature_analysis_mask_r9_7yr_v4.fits', 1, 'TEMPERATURE'),
         mask_downgrade_treshold=.5,
         seed=22,
-        uniform_rms=np.sqrt(Npix / np.sqrt(4*np.pi) * 1e-12)
+        uniform_rms=np.sqrt(Npix / 4*np.pi * 1e-12)
     )
 
 #
