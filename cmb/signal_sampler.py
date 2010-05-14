@@ -57,10 +57,10 @@ class ConstrainedSignalSampler(object):
 
         check_l_increases(lmin, lprecond, lmax)
 
-        # Set values
         obs = observations[0]
         N_inv_map = obs.properties.load_Ninv_map_mutable('ring')
         beam_and_window = obs.properties.load_beam_transfer_matrix(lmin, lmax)
+        # Multiply together beam and window
         pixwin = load_temperature_pixel_window_matrix(Nside, lmin, lmax)
         beam_and_window = pixwin * beam_and_window
         del pixwin
@@ -79,17 +79,13 @@ class ConstrainedSignalSampler(object):
         self.uniform_noise = np.all(N_inv_map == N_inv_map[0])
         self.logger = logger
         self.preconditioner = preconditioner
-        # Multiply together beam and window
         self.beam_and_window = beam_and_window
 
-        # Remove monopole and dipole from data, and
-        # compute N^{-1}d in harmonic space right away
+        # Compute N^{-1}d in harmonic space right away
         self.scaled_Ninv_map = N_inv_map * (self.Npix / 4 / np.pi)
         d = obs.load_temperature_mutable('ring')
-        #d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
         scaled_Ninv_d = self.scaled_Ninv_map * d
         self.Ninv_d = scaled_Ninv_d.to_harmonic(lmin, lmax, use_weights=False).to_real()
-
 
         preconditioner.set_logger(make_sublogger(logger, 'precond'))
         preconditioner.set_l_range(lmin, lmax)
@@ -127,29 +123,15 @@ class ConstrainedSignalSampler(object):
 
         obs = self.observations[0]
         N_inv_map = obs.properties.load_Ninv_map_mutable('ring')
-#        N_inv_map.map2gif('Ninv_map_cg.gif', title='Ninv_map_cg')
-#        N_inv_map.map2gif('A1.gif', title='A1')
         N_inv_map *= Npix / 4 / np.pi
-#        N_inv_map.map2gif('A2.gif', title='A2')
 
         d = obs.load_temperature_mutable('ring')
         
-        # Remove multipoles
-        #d.remove_multipoles_inplace(2, obs.properties.load_mask('ring'))
-        
-#        d = d.to_harmonic(self.lmin, self.lmax).to_pixel(self.Nside)
-        
         N_inv_map *= d
-#        N_inv_map.map2gif('Ninv_d_map_cg.gif', title='Ninv_d_map_cg')
         data_part = N_inv_map.to_harmonic(self.lmin, self.lmax, use_weights=False).to_real()
-#        data_part.to_pixel(self.Nside).map2gif('Ninv_d_cg.gif', title='Ninv_d_cg')
         del N_inv_map
-#        data_part.to_pixel(self.Nside).map2gif('C.gif', title='C')
         data_part = self.beam_and_window * data_part
-#        data_part.to_pixel(self.Nside).map2gif('A_Ninv_d_cg.gif', title='A_Ninv_d_cg')
         data_part = P.H * (L.H * (P * data_part))
-#        data_part.to_pixel(self.Nside).map2gif('E.gif', title='E')
-        
 
         rhs = data_part
         del data_part
@@ -166,13 +148,6 @@ class ConstrainedSignalSampler(object):
 
             rhs += eta1_part
 
-#            eta1_part.to_pixel(self.Nside).map2gif('eta1.gif', title='eta1')
-#            eta0.to_pixel(self.Nside).map2gif('eta0.gif', title='eta0')
-
-#        rhs.to_pixel(self.Nside).map2gif('rhs_cg.gif', title='rhs_cg')
-#        data_part.to_pixel(self.Nside).map2gif('data.gif', title='data')
-
-        
         return rhs
                      
     def sample_signal_details(self, rhs=None,
@@ -202,7 +177,6 @@ class ConstrainedSignalSampler(object):
                          timestats(t0))
 
         # Got x; need to scale back -- x = L^-1 sdraw
-#        x.to_pixel(64).map2gif('x.gif', title='x')
         sdraw = harmonic_sphere_map(P.H * (L * (P * x)), self.lmin, self.lmax, is_complex=False)
         return sdraw, info, x
 
@@ -258,16 +232,12 @@ class BasePreconditioner(object):
 
     def set_experiment_properties(self, instruments_and_masks):
         raise NotImplementedError()
-#        self.instruments_and_masks = bands
 
     def set_model(self, S, covar_cache):
         raise NotImplementedError()
-#        self.S = S
 
     def clear(self):
         pass
-        # Let go of all memory
-#        self.S = self.Ninv_map = self.beam = None
 
 def lookup_lrange_cache(cache, lmin, lmax):
     """

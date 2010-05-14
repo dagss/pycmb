@@ -250,24 +250,6 @@ def main():
         rms=fitsdesc(args.rms),
         n_obs=fitsdesc(args.nobs, 1, 'N_OBS'),
         temperature=fitsdesc(args.observed)
-            # Use uniform RMS instead of a map
-            ##uniform_rms=5e-5,
-
-            # Add uniform RMS in addition to map
-            ##add_noise=5e-5,
-
-            # Explicit n_obs map
-            ##n_obs=('my_nobs_map.fits', 1, 'TEMPERATURE'),
-
-            # Explicit temperature map
-            ##temperature=('my_temp.fits', 1, 'TEMPERATURE'),
-
-            #Nside=32,
-            # When downgrading the mask, pixel values below this value
-            # will be set to 0, the ones above to 1:
-            #mask_downgrade_treshold=.5
-            # A random seed can be provided for the use of uniform_rms/add_noise:
-        ##seed=34,
     )
 
     if args.lmax is None:
