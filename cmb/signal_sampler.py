@@ -1,4 +1,12 @@
 from __future__ import division
+##############################################################################
+#    Copyright (C) 2010 Dag Sverre Seljebotn <dagss@student.matnat.uio.no>
+#  Distributed under the terms of the GNU General Public License (GPL),
+#  either version 2 of the License, or (at your option) any later version.
+#  The full text of the GPL is available at:
+#                  http://www.gnu.org/licenses/
+##############################################################################
+
 import numpy as np
 from cmb.maps import (random_real_harmonic_sphere_map, simulate_pixel_sphere_maps,
                       harmonic_sphere_map)

@@ -1,0 +1,36 @@
+pycmb -- Python framework for CMB analysis
+==========================================
+
+This is a subset of the Python code developed for the Master
+thesis of Dag Sverre Seljebotn (see http://heim.ifi.uio.no/dagss).
+
+The intention is to include both a framework for doing Python
+programming within CMB analysis, and a set of command line wrappers
+around various standalone features in the framework. Currently
+there is one such program:
+
+  - cmbcr -- A program for doing constrained realizations, see
+             cmb/apps/cmbcr.py
+
+This is work in progress! If you want to use this code, it's probably
+best to drop me an email. The constrained realization part is however
+fairly stable and well tested.
+
+There are no installation instructions yet, so see the SConscript file.
+
+Dependencies:
+
+  - healpix4py: http://github.com/healpix4py
+  - NumPy, SciPy, scons, etc.
+
+License
+~~~~~~~
+
+Copyright (C) 2010 Dag Sverre Seljebotn <dagss@student.matnat.uio.no>
+Distributed under the terms of the GNU General Public License (GPL),
+either version 2 of the License, or (at your option) any later version.
+The full text of the GPL is available at:
+                http://www.gnu.org/licenses/
+
+--
+Dag Sverre
