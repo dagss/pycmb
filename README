@@ -20,7 +20,7 @@ There are no installation instructions yet, so see the SConscript file.
 
 Dependencies:
 
-  - healpix4py: http://github.com/healpix4py
+  - healpix4py: http://github.com/dagss/healpix4py
   - NumPy, SciPy, scons, etc.
 
 License
