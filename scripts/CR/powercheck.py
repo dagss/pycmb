@@ -14,7 +14,7 @@ logging.basicConfig()
 
 lbeam = 35
 lmax = 50
-lnoise = 40 # point at which noise is 3000uK^2
+lnoise = 100 # point at which noise is 3000uK^2
 lprecond = 50
 Nside = 64
 J = 4
@@ -86,7 +86,15 @@ with outdir:
 #                        ylim=ylim)
 
     smoothed_signal = obsprop.load_beam_transfer_matrix(2, lmax) * signal
+    pixwin = load_temperature_pixel_window_matrix(Nside, 2, lmax)
+    smoothed_signal = pixwin * smoothed_signal
     plot_power_spectrum(smoothed_signal.power_spectrum() * 1e12, ax=ax)
+
+    smoothed_noisy_signal = smoothed_signal.to_pixel(Nside)
+    smoothed_noisy_signal += np.random.normal(scale=obsprop.load_rms('ring'))
+    smoothed_noisy_signal = smoothed_noisy_signal.to_harmonic(2, 2*lmax)
+    line = plot_power_spectrum(smoothed_noisy_signal.power_spectrum() * 1e12, ax=ax)[0]
+    line.set_color('green')
 
     rmspowerspectrum = ClArray(noise_power, 2, 2*lmax)
     line = plot_power_spectrum(rmspowerspectrum * 1e12, ax=ax)[0]
