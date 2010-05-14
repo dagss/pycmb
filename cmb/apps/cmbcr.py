@@ -127,172 +127,180 @@ parser.add_argument('mask', type=str,
 parser.add_argument('observed', type=str,
                     help='The observed map.')
 
-# Parse args
-args = parser.parse_args()
 
-# Fill in some defaults
+def main():
+    # Parse args
+    args = parser.parse_args()
 
-def find_procid():
+    # Fill in some defaults
+
+    def find_procid():
+        try:
+            from mpi4py.MPI import COMM_WORLD as comm
+            if comm.Get_size() > 0:
+                return comm.Get_rank()
+        except ImportError:
+            pass
+
+        if 'SLURM_PROCID' in os.environ:
+            return int(os.environ['SLURM_PROCID'])
+
+        return 0
+
+    args.output = os.path.expandvars(args.output)
+    if args.procid is None:
+        args.procid = find_procid()
+    else:
+        args.procid = os.path.expandvars(args.procid)
+        try:
+            # Canonicalize to integer if possible (more predictable
+            # random seed behaviour)
+            args.procid = int(args.procid)
+        except ValueError:
+            pass
+
+    def fitsdesc(x, defext=1, deffield=0):
+        if x is None:
+            return None
+        else:
+            if ':' in x:
+                return x.split(':')
+            else:
+                return (x, defext, deffield)
+
+    # Combine random seed with process ID to create unique seed
+    # for each process
+    if args.seed is None:
+        args.seed = np.random.randint(sys.maxint)
+    elif args.seed > 0x7FFF:
+         # If we proceed we'll loose bits and two different random seeds can produce
+         # identical results. Of course, we could use less than 16 bits
+         # for the process ID if this becomes a problem.
+        raise ValueError('Random seed too large, must be less than %d' % 0x7FFF)
+    args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0x7FFFFFFF)
+
     try:
-        from mpi4py.MPI import COMM_WORLD as comm
-        if comm.Get_size() > 0:
-            return comm.Get_rank()
-    except ImportError:
-        pass
-
-    if 'SLURM_PROCID' in os.environ:
-        return int(os.environ['SLURM_PROCID'])
-
-    return 0
-
-args.output = os.path.expandvars(args.output)
-if args.procid is None:
-    args.procid = find_procid()
-else:
-    args.procid = os.path.expandvars(args.procid)
-    try:
-        # Canonicalize to integer if possible (more predictable
-        # random seed behaviour)
-        args.procid = int(args.procid)
+        args.sigma = float(args.sigma)
     except ValueError:
         pass
 
-def fitsdesc(x, defext=1, deffield=0):
-    if x is None:
-        return None
-    else:
-        if ':' in x:
-            return x.split(':')
-        else:
-            return (x, defext, deffield)
+    #
+    # Configuration of loggers/verbosity levels. Basically map verbosity
+    # integers to different levels for different logs
+    #
+    log_configs = [
+         # default level, [overrides]
+    # Level 0
+        (logging.WARNING, []),
+    # Level 1
+        (logging.INFO, [
+          ('cr', logging.WARNING),
+          ('cr.precond', logging.WARNING),
+          ('cr.cg', logging.WARNING),
+        ]),
+    # Level 2
+        (logging.INFO, [
+          ('cr', logging.INFO),
+          ('cr.precond', logging.INFO),
+          ('cr.cg', logging.WARNING),
+        ]),
+    # Level 3
+        (logging.INFO, {}),
+    # Level 4
+        (logging.DEBUG, {}),
+    ]
 
-# Combine random seed with process ID to create unique seed
-# for each process
-if args.seed is None:
-    args.seed = np.random.randint(sys.maxint)
-elif args.seed > 0x7FFF:
-     # If we proceed we'll loose bits and two different random seeds can produce
-     # identical results. Of course, we could use less than 16 bits
-     # for the process ID if this becomes a problem.
-    raise ValueError('Random seed too large, must be less than %d' % 0x7FFF)
-args.seed = int(((args.seed << 16) ^ hash(args.procid)) & 0x7FFFFFFF)
+    logging.basicConfig(format='%s %%(levelname)s:%%(name)s:%%(message)s' % args.procid,
+                        stream=sys.stdout)
+    if args.verbose >= len(log_configs):
+        args.verbose = len(log_configs) - 1
+    lc = log_configs[args.verbose]
 
-
-#
-# Configuration of loggers/verbosity levels. Basically map verbosity
-# integers to different levels for different logs
-#
-log_configs = [
-     # default level, [overrides]
-# Level 0
-    (logging.WARNING, []),
-# Level 1
-    (logging.INFO, [
-      ('cr', logging.WARNING),
-      ('cr.precond', logging.WARNING),
-      ('cr.cg', logging.WARNING),
-    ]),
-# Level 2
-    (logging.INFO, [
-      ('cr', logging.INFO),
-      ('cr.precond', logging.INFO),
-      ('cr.cg', logging.WARNING),
-    ]),
-# Level 3
-    (logging.INFO, {}),
-# Level 4
-    (logging.DEBUG, {}),
-]
-
-logging.basicConfig(format='%s %%(levelname)s:%%(name)s:%%(message)s' % args.procid,
-                    stream=sys.stdout)
-if args.verbose >= len(log_configs):
-    args.verbose = len(log_configs) - 1
-lc = log_configs[args.verbose]
-
-logger = logging.getLogger()
-logger.setLevel(lc[0])
-for name, lvl in lc[1]:
-    logging.getLogger(name).setLevel(lvl)
+    logger = logging.getLogger()
+    logger.setLevel(lc[0])
+    for name, lvl in lc[1]:
+        logging.getLogger(name).setLevel(lvl)
 
 
 
-#
-# Set up the sampler
-#
+    #
+    # Set up the sampler
+    #
 
-import cmb # time-consuming, so putting after argparsing
+    import cmb # time-consuming, so putting after argparsing
 
 
-model = cmb.IsotropicCmbModel(
-    # The power spectrum data file
-    power_spectrum=args.powerspectrum
-)
+    model = cmb.IsotropicCmbModel(
+        # The power spectrum data file
+        power_spectrum=args.powerspectrum
+    )
 
-observation = cmb.CmbObservation(
-    sigma0=args.sigma,
-    beam=args.beam,
-    mask=fitsdesc(args.mask),
-    rms=fitsdesc(args.rms),
-    n_obs=fitsdesc(args.nobs, 1, 'N_OBS'),
-    temperature=fitsdesc(args.observed)
-        # Use uniform RMS instead of a map
-        ##uniform_rms=5e-5,
+    observation = cmb.CmbObservation(
+        sigma0=args.sigma,
+        beam=args.beam,
+        mask=fitsdesc(args.mask),
+        rms=fitsdesc(args.rms),
+        n_obs=fitsdesc(args.nobs, 1, 'N_OBS'),
+        temperature=fitsdesc(args.observed)
+            # Use uniform RMS instead of a map
+            ##uniform_rms=5e-5,
 
-        # Add uniform RMS in addition to map
-        ##add_noise=5e-5,
+            # Add uniform RMS in addition to map
+            ##add_noise=5e-5,
 
-        # Explicit n_obs map
-        ##n_obs=('my_nobs_map.fits', 1, 'TEMPERATURE'),
+            # Explicit n_obs map
+            ##n_obs=('my_nobs_map.fits', 1, 'TEMPERATURE'),
 
-        # Explicit temperature map
-        ##temperature=('my_temp.fits', 1, 'TEMPERATURE'),
+            # Explicit temperature map
+            ##temperature=('my_temp.fits', 1, 'TEMPERATURE'),
 
-        #Nside=32,
-        # When downgrading the mask, pixel values below this value
-        # will be set to 0, the ones above to 1:
-        #mask_downgrade_treshold=.5
-        # A random seed can be provided for the use of uniform_rms/add_noise:
-    ##seed=34,
-)
+            #Nside=32,
+            # When downgrading the mask, pixel values below this value
+            # will be set to 0, the ones above to 1:
+            #mask_downgrade_treshold=.5
+            # A random seed can be provided for the use of uniform_rms/add_noise:
+        ##seed=34,
+    )
 
-if args.lmax is None:
-    args.lmax = 3*observation.Nside - 1
-if args.lprecond is None:
-    args.lprecond = max([min([args.lmax // 2, 60]), 30])
+    if args.lmax is None:
+        args.lmax = 3*observation.Nside - 1
+    if args.lprecond is None:
+        args.lprecond = max([min([args.lmax // 2, 60]), 30])
 
-t0 = cmb.get_times()
-logger.info('Process-specific random seed: %d; lmax=%d; lprecond=%d' % (args.seed, args.lmax,
-                                                                        args.lprecond))
-logger.info('Initializing')
-sampler_logger = logging.getLogger("cr")
-sampler = cmb.ConstrainedSignalSampler(
-    model=model,
-    observations=[observation],
-    lmax=args.lmax,
-    lprecond=min([args.lprecond, args.lmax]),
-    logger=sampler_logger,
-    seed=args.seed,
-    eps=args.eps
-)
-cmb.log_times(logger, t0, 'Done initializing (%s)')
+    t0 = cmb.get_times()
+    logger.info('Process-specific random seed: %d; lmax=%d; lprecond=%d' % (args.seed, args.lmax,
+                                                                            args.lprecond))
+    logger.info('Initializing')
+    sampler_logger = logging.getLogger("cr")
+    sampler = cmb.ConstrainedSignalSampler(
+        model=model,
+        observations=[observation],
+        lmax=args.lmax,
+        lprecond=min([args.lprecond, args.lmax]),
+        logger=sampler_logger,
+        seed=args.seed,
+        eps=args.eps
+    )
+    cmb.log_times(logger, t0, 'Done initializing (%s)')
 
-with cmb.working_directory(args.output_dir):
-    for i in range(args.repeat):
-        outfile = args.output.format(i=i, p=args.procid)
-        if os.path.exists(outfile) and not args.force:
-            logger.warning('File exists, skipping sample: %s' % outfile)
-        else:
-            t0 = cmb.get_times()
-            signal, [map] = sampler.sample_unmasked()
-            map.to_fits(outfile)
-            cmb.log_times(logger, t0, 'Sample %d of %d (%%s): %s' % (i+1, args.repeat, outfile))
-            if args.render:
-                giffile = '%s.gif' % outfile
-                if os.path.exists(giffile):
-                    logger.warning('Not creating GIF file, it already exists (and will '
-                                   'be outdated): %s' % giffile)
-                map.map2gif(giffile, title=outfile, bar=True, max=args.render_span,
-                            min=-args.render_span)
-logger.info('All samples taken, terminating')
-sys.exit(0)
+    with cmb.working_directory(args.output_dir):
+        for i in range(args.repeat):
+            outfile = args.output.format(i=i, p=args.procid)
+            if os.path.exists(outfile) and not args.force:
+                logger.warning('File exists, skipping sample: %s' % outfile)
+            else:
+                t0 = cmb.get_times()
+                signal, [map] = sampler.sample_unmasked()
+                map.to_fits(outfile)
+                cmb.log_times(logger, t0, 'Sample %d of %d (%%s): %s' % (i+1, args.repeat, outfile))
+                if args.render:
+                    giffile = '%s.gif' % outfile
+                    if os.path.exists(giffile):
+                        logger.warning('Not creating GIF file, it already exists (and will '
+                                       'be outdated): %s' % giffile)
+                    map.map2gif(giffile, title=outfile, bar=True, max=args.render_span,
+                                min=-args.render_span)
+    logger.info('All samples taken, terminating')
+
+if __name__ == '__main__':
+    main()
