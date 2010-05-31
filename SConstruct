@@ -11,7 +11,9 @@ v.Add('CFITSIO_LIB')
 v.Add('PYEXTCFLAGS')
 v.Add('PYEXTLINKFLAGS')
 env = Environment(variables=v,
-                  PYEXT_USE_DISTUTILS=True)
+                  PYEXT_USE_DISTUTILS=True,
+                  FORTRAN='ifort',
+                  F90='ifort')
 
 env.Tool("pyext")
 env.Tool("cython")
