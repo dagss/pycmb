@@ -1,0 +1,8 @@
+# Path to healpix4py
+HEALPIX4PY_INCLUDE = '../healpix4py'
+
+# Fortran compiler settings
+FORTRAN= 'gfortran'
+FORTRANFLAGS = '-O3'
+PYEXTLINKFLAGS= '-shared'
+
