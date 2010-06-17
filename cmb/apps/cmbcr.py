@@ -191,6 +191,8 @@ def main():
         args.sigma = float(args.sigma)
     except ValueError:
         pass
+    except TypeError:
+        pass
 
     #
     # Configuration of loggers/verbosity levels. Basically map verbosity
