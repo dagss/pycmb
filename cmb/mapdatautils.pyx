@@ -461,66 +461,6 @@ def map2alm(int lmax, map, weight_ring, out=None):
         raise RuntimeError("nan")
     return almC
 
-def packedalm2fits(filename, lmax, alm):
-    """
-    alm should be alm values in real, packed format
-    """
-
-    cdef int nalms = (lmax+1)**2
-    alms = np.zeros((nalms,4,1), dtype=real_dtype, order='F')
-    cdef np.ndarray[real_t] larr = alms[:,0,0]
-    cdef np.ndarray[real_t] marr = alms[:,1,0]
-    cdef np.ndarray[real_t] real = alms[:,2,0]
-    cdef np.ndarray[real_t] imag = alms[:,3,0]
-    
-    cdef unsigned l0, idx
-    cdef int m, l
-    cdef real_t sqr2 = np.sqrt(2)
-    for l in range(lmax + 1):
-        l0 = l*l + l
-        for m in range(-l, l+1):
-            idx = l0 + m
-            larr[idx] = l
-            marr[idx] = m
-            real[idx] = alm[idx] * sqr2
-            if m != 0:
-                imag[idx] = alm[l0 - m]
-            else:
-                imag[idx] = 0
-    real /= np.sqrt(2)
-    imag /= np.sqrt(2)
-    import os
-    if os.path.exists(filename): os.unlink(filename)
-    heal.alms2fits(filename, alms)
-
-def fits2packedalm(filename, lmax, np.ndarray[real_t] alm):
-    """
-    """
-    cdef int nalms = (lmax+1)**2
-    alms = np.zeros((nalms,4,1), dtype=real_dtype, order='F')
-    cdef np.ndarray[real_t] larr = alms[:,0,0]
-    cdef np.ndarray[real_t] marr = alms[:,1,0]
-    cdef np.ndarray[real_t] real = alms[:,2,0]
-    cdef np.ndarray[real_t] imag = alms[:,3,0]
-
-    heal.fits2alms(filename, alms)
-    alm[:] = 0#np.nan
-
-    cdef unsigned idx, l
-    cdef double re, im
-    cdef int m
-    cdef real_t sqr2 = np.sqrt(2)
-    for idx in range(nalms):
-        l = <int>larr[idx]
-        m = <int>marr[idx]
-        if m != 0:
-            alm[l*l + l + m] = real[idx]
-            alm[l*l + l - m] = imag[idx]
-        else:
-            alm[l*l + l] = real[idx] * sqr2
-    alm *= np.sqrt(2)
-        
-
 def num_alm_to_lmax(num_alm, is_complex=True):
     if is_complex:
         # Solve num_alm == (lmax + 2)(lmax + 1)/2:
