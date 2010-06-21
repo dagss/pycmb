@@ -3,6 +3,13 @@ HEALPIX4PY_INCLUDE = '../healpix4py'
 
 # Fortran compiler settings
 FORTRAN= 'gfortran'
-FORTRANFLAGS = '-O3'
-PYEXTLINKFLAGS= '-shared'
+FORTRANFLAGS = ['-O3', '-g']
+
+# Linker flags
+
+# Linux:
+FORTRANPYEXTLINK = '$FORTRAN -shared -pthread'
+
+# Mac OS X:
+## F90PYEXTLINK = '$FORTRAN -bundle -undefined dynamic_lookup'
 
