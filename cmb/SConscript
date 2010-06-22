@@ -7,7 +7,7 @@ env.PythonExtension('noise', ['noise.pyx'])
 d1mach_env = env.Clone()
 d1mach_env.Replace(FORTRANFLAGS=env['FORTRAN_FPU_DETECT_FLAGS'])
 
-objs = env.SharedObject([x for x in Glob("slatec/src/*.f")
+objs = env.SharedObject([x for x in Glob("slatec_src/src/*.f")
                          if x.name != 'd1mach.f'])
 objs += d1mach_env.SharedObject('slatec/src/d1mach.f')
 
