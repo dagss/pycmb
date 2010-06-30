@@ -11,5 +11,5 @@ FORTRANFLAGS = ['-O3', '-g']
 FORTRANPYEXTLINK = '$FORTRAN -shared -pthread'
 
 # Mac OS X:
-## F90PYEXTLINK = '$FORTRAN -bundle -undefined dynamic_lookup'
+## FORTRANPYEXTLINK = '$FORTRAN -bundle -undefined dynamic_lookup'
 
